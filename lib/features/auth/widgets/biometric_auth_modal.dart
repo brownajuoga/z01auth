@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/z01_theme.dart';
+import '../../../services/biometric_service.dart';
 
-/// Bottom sheet that simulates Android biometric (fingerprint) verification.
-/// Mock for now: tapping the fingerprint counts as a successful scan.
-/// Colours come from Z01Palette, so it works in dark and light mode.
+/// Bottom sheet that invokes real Android & device biometric (fingerprint/face) verification.
+/// Interacts directly with physical hardware sensors via BiometricService and local_auth.
 class BiometricAuthModal extends StatefulWidget {
   final String title;
   final String subtitle;
@@ -46,7 +46,8 @@ class _BiometricAuthModalState extends State<BiometricAuthModal>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulse;
   bool _isSuccess = false;
-  String _statusMessage = 'Tap the fingerprint to verify';
+  bool _isAuthenticating = false;
+  String _statusMessage = 'Touch sensor or tap to verify';
 
   @override
   void initState() {
@@ -55,6 +56,15 @@ class _BiometricAuthModalState extends State<BiometricAuthModal>
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     )..repeat();
+
+    // Auto-prompt physical sensor prompt after the bottom sheet opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && !_isSuccess && !_isAuthenticating) {
+          _handleScan();
+        }
+      });
+    });
   }
 
   @override
@@ -64,17 +74,39 @@ class _BiometricAuthModalState extends State<BiometricAuthModal>
   }
 
   Future<void> _handleScan() async {
-    if (_isSuccess) return;
-    setState(() {
-      _isSuccess = true;
-      _statusMessage = 'Verified. Signing you in...';
-    });
-    _pulse.stop();
+    if (_isSuccess || _isAuthenticating) return;
 
-    await Future.delayed(const Duration(milliseconds: 700));
-    if (mounted) {
-      Navigator.pop(context);
-      widget.onSuccess();
+    setState(() {
+      _isAuthenticating = true;
+      _statusMessage = 'Sensor active. Verify your fingerprint...';
+    });
+
+    final success = await BiometricService.instance.authenticate(
+      reason: widget.subtitle,
+      proximityVerified: true,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() {
+        _isSuccess = true;
+        _isAuthenticating = false;
+        _statusMessage = 'Verified. Signing you in...';
+      });
+      _pulse.stop();
+
+      await Future.delayed(const Duration(milliseconds: 650));
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onSuccess();
+      }
+    } else {
+      setState(() {
+        _isAuthenticating = false;
+        final err = BiometricService.instance.lastErrorMessage;
+        _statusMessage = err.isNotEmpty ? err : 'Authentication failed. Tap to try again.';
+      });
     }
   }
 
@@ -150,7 +182,7 @@ class _BiometricAuthModalState extends State<BiometricAuthModal>
             ),
             const SizedBox(height: 28),
 
-            // Fingerprint button with a soft expanding ring (no glow shadows)
+            // Fingerprint button with physical sensor trigger and ripple animation
             GestureDetector(
               onTap: _handleScan,
               child: SizedBox(
@@ -183,28 +215,44 @@ class _BiometricAuthModalState extends State<BiometricAuthModal>
                       height: 90,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _isSuccess ? p.brand : p.card,
+                        color: _isSuccess
+                            ? p.brand
+                            : _isAuthenticating
+                                ? p.cardElevated
+                                : p.card,
                         border: Border.all(
                           color: _isSuccess ? p.brand : p.border,
                           width: 1.5,
                         ),
                       ),
-                      child: Icon(
-                        _isSuccess
-                            ? Icons.check_rounded
-                            : Icons.fingerprint_rounded,
-                        size: 46,
-                        color: _isSuccess ? p.onBrand : p.text,
-                      ),
+                      child: _isAuthenticating
+                          ? Center(
+                              child: SizedBox(
+                                width: 34,
+                                height: 34,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: p.brand,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              _isSuccess
+                                  ? Icons.check_rounded
+                                  : Icons.fingerprint_rounded,
+                              size: 46,
+                              color: _isSuccess ? p.onBrand : p.text,
+                            ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
             Text(
               _statusMessage,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 color: _isSuccess ? p.text : p.muted,
                 fontSize: 13,
@@ -213,7 +261,7 @@ class _BiometricAuthModalState extends State<BiometricAuthModal>
             ),
             const SizedBox(height: 24),
 
-            // Cancel (pill outline button comes from the theme)
+            // Cancel button
             OutlinedButton(
               style: OutlinedButton.styleFrom(
                 foregroundColor: p.muted,

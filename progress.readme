@@ -26,7 +26,8 @@ Z01auth replaces the legacy physical door fingerprint scanner with zero-touch pr
 | **Step 5** | Oct 20, 2026 | `2e58771` | Completed | Built Frame 4 (`04_History`) with 3-column monthly summary strip (`DAYS PRESENT`, `AVG HOURS`, `VERIFIED`), daily attendance log cards, and `AttendanceDetailSheet`. |
 | **Step 6** | Oct 21, 2026 | `9afe7a2` | Completed | Built full service layer (`ApiClient`, `AttendanceService`, `BiometricService`, `LocationService`, `WifiService`) matching the Go Backend API specification. |
 | **Step 7** | Oct 27, 2026 | `4bd152d` | Completed | Implemented Analytics View (`AnalyticsScreen`), refined proximity shield hero, updated launcher icons, and finalized brand identity. |
-| **Step 8** | Oct 30, 2026 | `HEAD` | Completed | Finalized frontend integration: synchronized Go backend API routes, resolved test suite lifecycle, and validated 0 analyzer issues. |
+| **Step 8** | Oct 30, 2026 | `677123e` | Completed | Finalized frontend integration: synchronized Go backend API routes, resolved test suite lifecycle, and validated 0 analyzer issues. |
+| **Step 9** | Oct 31, 2026 | `HEAD` | Completed | Implemented real hardware `local_auth` biometric sensing, migrated MainActivity to `FlutterFragmentActivity`, built dedicated `ProfileScreen`, wired header avatar navigation, and purged mock/fake data across all screens. |
 
 ---
 
@@ -35,18 +36,20 @@ Z01auth replaces the legacy physical door fingerprint scanner with zero-touch pr
 ### Frontend UI & Aesthetics
 - [x] Strict high-contrast Monochrome theme: Pure Black (`#000000`) and Pure White (`#FFFFFF`).
 - [x] Dynamic runtime theme switching via `ThemeController` (reactive `ValueNotifier`).
-- [x] In-app `SettingsDrawer` with Black/White appearance toggles, background polling toggle, and Google sign-out.
+- [x] In-app `SettingsDrawer` with Black/White appearance toggles, background polling toggle, student profile shortcut, and Google sign-out.
 - [x] Custom `RadarRingPainter` supporting 3 visual geometry states:
   - Solid outer ring with animated pulse glow (**Checked In**)
   - Dashed arc ring (**Near Premises / Approaching**)
   - Dotted circle ring (**Off Premises / Locked**)
 - [x] Proximity gate banner with interactive test toggle (simulates Near Premises `<50m` vs Off Premises `>150m`).
-- [x] Biometric authentication bottom-sheet scanner with pulsing ripple animation.
+- [x] Biometric authentication bottom-sheet scanner wired directly to physical sensor hardware via `local_auth`.
+- [x] Dedicated `ProfileScreen` with student identity, device binding details, and interactive biometric diagnostics.
 - [x] 2-Column summary cards with immutable Time In (lock icon) and rolling Time Out (sync icon).
-- [x] Frame 4 History scrollable list with interactive audit trail modal sheet.
+- [x] Frame 4 History scrollable list with dynamic API data fetching and interactive audit trail modal sheet.
 
 ### Platform & Android Configuration
 - [x] Target platform configured for **Android 6.0+ (API 23+)** via `minSdk = 23` in `android/app/build.gradle.kts`.
+- [x] Migrated `MainActivity.kt` to `FlutterFragmentActivity` for native `BiometricPrompt` support.
 - [x] Declared runtime & hardware permissions in `AndroidManifest.xml`:
   - `android.permission.INTERNET`
   - `android.permission.ACCESS_FINE_LOCATION`
@@ -73,7 +76,7 @@ Z01auth replaces the legacy physical door fingerprint scanner with zero-touch pr
 ```
 Remaining Tasks
 ├── 1. Physical Device Hardware Wiring
-│   ├── local_auth plugin integration (real biometric hardware prompt)
+│   ├── [x] local_auth plugin integration (real biometric hardware prompt & diagnostics)
 │   ├── geolocator plugin integration (live GPS fix + isMockLocation check)
 │   └── network_info_plus plugin integration (live BSSID/SSID reading)
 ├── 2. Firebase & Google Auth Production Setup

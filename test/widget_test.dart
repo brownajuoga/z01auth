@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:z01auth/features/auth/widgets/proximity_shield_hero.dart';
 import 'package:z01auth/features/dashboard/dashboard_shell.dart';
 import 'package:z01auth/features/permissions/permissions_screen.dart';
+import 'package:z01auth/features/profile/profile_screen.dart';
 import 'package:z01auth/main.dart';
 
 void main() {
@@ -87,5 +88,28 @@ void main() {
     // Unmount to cleanly cancel tickers and timers
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 100));
+  });
+
+  testWidgets('DashboardScreen profile avatar navigates to ProfileScreen', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        initialRoute: '/dashboard',
+        routes: {
+          '/dashboard': (context) => const DashboardShell(),
+          '/profile': (context) => const ProfileScreen(),
+        },
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final profileFinder = find.byTooltip('View Profile');
+    expect(profileFinder, findsOneWidget);
+    await tester.tap(profileFinder);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Student Profile'), findsOneWidget);
+    expect(find.text('Aaron Brown'), findsOneWidget);
+    expect(find.text('aaron.b@zone01kisumu.ke'), findsOneWidget);
+    expect(find.text('Test Device Biometric Sensor'), findsOneWidget);
   });
 }

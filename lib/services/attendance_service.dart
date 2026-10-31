@@ -44,6 +44,8 @@ class AttendanceService extends ChangeNotifier {
   bool get isNearCampus => isWifiVerified || isGpsVerified;
 
   void initialize() {
+    _wifiService.refreshWifiInfo().then((_) => _evaluatePresence());
+    _locationService.refreshLocation().then((_) => _evaluatePresence());
     _evaluatePresence();
     _loadTodayAttendance();
 

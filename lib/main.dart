@@ -5,9 +5,11 @@ import 'features/auth/auth_screen.dart';
 import 'features/dashboard/dashboard_shell.dart';
 import 'features/permissions/permissions_screen.dart';
 import 'features/profile/profile_screen.dart';
+import 'services/background_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await BackgroundService.instance.initialize();
   runApp(const Z01AuthApp());
 }
 

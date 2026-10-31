@@ -4,6 +4,7 @@ import 'core/theme/z01_theme.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/dashboard/dashboard_shell.dart';
 import 'features/permissions/permissions_screen.dart';
+import 'features/profile/profile_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +30,7 @@ class Z01AuthApp extends StatelessWidget {
             '/auth': (context) => const AuthScreen(),
             '/permissions': (context) => const PermissionsScreen(),
             '/dashboard': (context) => const DashboardShell(),
+            '/profile': (context) => const ProfileScreen(),
           },
         );
       },

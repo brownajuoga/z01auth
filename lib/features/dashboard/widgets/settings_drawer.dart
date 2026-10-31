@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/theme/z01_theme.dart';
+import '../../../services/user_service.dart';
 
 /// Settings bottom sheet: theme, background check-ins, sign out.
 class SettingsDrawer extends StatefulWidget {
@@ -70,9 +71,8 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    // TODO: replace with the signed-in Firebase user's email
                     Text(
-                      'alex.b@zone01kisumu.ke',
+                      UserService.instance.currentUser.email,
                       style: TextStyle(color: p.muted, fontSize: 12),
                     ),
                   ],
@@ -84,6 +84,57 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
               ],
             ),
             const SizedBox(height: 20),
+
+            // ---------- Profile shortcut ----------
+            InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/profile');
+              },
+              child: _card(
+                p,
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: p.brand,
+                      child: Text(
+                        UserService.instance.currentUser.initials,
+                        style: TextStyle(
+                          color: p.onBrand,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            UserService.instance.currentUser.displayName,
+                            style: TextStyle(
+                              color: p.text,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${UserService.instance.studentId} • View Profile & Devices',
+                            style: TextStyle(color: p.muted, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, color: p.muted),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
 
             // ---------- Appearance ----------
             _card(

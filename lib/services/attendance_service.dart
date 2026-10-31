@@ -21,29 +21,15 @@ class AttendanceService extends ChangeNotifier {
   final WifiService _wifiService = WifiService.instance;
 
   PresenceState _presenceState = PresenceState.checkedIn;
-  bool _isFirstSeenLocked = true;
-  final String _firstSeenEat = '08:42:10 AM';
-  String _lastSeenEat = '04:19:02 PM';
-  String _activeDurationFormatted = '07h 37m';
+  bool _isFirstSeenLocked = false;
+  String _firstSeenEat = '--:--:--';
+  String _lastSeenEat = '--:--:--';
+  String _activeDurationFormatted = '00h 00m';
+  DateTime? _firstSeenTime;
   bool _isSyncing = false;
   Timer? _heartbeatTimer;
 
-  final List<DetectionLog> _recentDetections = [
-    const DetectionLog(
-      id: 'ping_992',
-      timeEat: '16:19',
-      title: 'Wi-Fi Heartbeat (Auto)',
-      subtitle: 'BSSID: 00:1A:2B:3C:4D:5E',
-      triggerType: AttendanceTriggerType.wifiHeartbeat,
-    ),
-    const DetectionLog(
-      id: 'ping_901',
-      timeEat: '08:42',
-      title: 'First Check-In (Time In)',
-      subtitle: 'Door Wi-Fi + GPS + Biometrics',
-      triggerType: AttendanceTriggerType.biometricCheckin,
-    ),
-  ];
+  final List<DetectionLog> _recentDetections = [];
 
   PresenceState get presenceState => _presenceState;
   bool get isFirstSeenLocked => _isFirstSeenLocked;
@@ -59,6 +45,8 @@ class AttendanceService extends ChangeNotifier {
 
   void initialize() {
     _evaluatePresence();
+    _loadTodayAttendance();
+
     // Schedule 5-minute background Wi-Fi heartbeat
     _heartbeatTimer?.cancel();
     _heartbeatTimer = Timer.periodic(const Duration(minutes: 5), (_) {
@@ -66,6 +54,27 @@ class AttendanceService extends ChangeNotifier {
         sendHeartbeat(triggerType: AttendanceTriggerType.wifiHeartbeat);
       }
     });
+  }
+
+  Future<void> _loadTodayAttendance() async {
+    try {
+      final data = await _apiClient.getTodayAttendance();
+      if (data['checked_in_today'] == true) {
+        _isFirstSeenLocked = true;
+        _firstSeenEat = data['first_seen_at'] ?? '--:--:--';
+        _lastSeenEat = data['last_seen_at'] ?? '--:--:--';
+        _activeDurationFormatted = data['active_duration_formatted'] ?? '00h 00m';
+
+        final rawDetections = data['recent_detections'] as List<dynamic>? ?? [];
+        _recentDetections.clear();
+        for (final item in rawDetections) {
+          _recentDetections.add(DetectionLog.fromJson(item as Map<String, dynamic>));
+        }
+        notifyListeners();
+      }
+    } catch (_) {
+      // Offline or network error
+    }
   }
 
   void _evaluatePresence() {
@@ -90,7 +99,16 @@ class AttendanceService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sends attendance ping to Go Backend and updates UI state
+  /// Format DateTime into readable EAT time string
+  String _formatEatTime(DateTime dt) {
+    final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    final minStr = dt.minute.toString().padLeft(2, '0');
+    final secStr = dt.second.toString().padLeft(2, '0');
+    return '${hour.toString().padLeft(2, '0')}:$minStr:$secStr $period';
+  }
+
+  /// Sends attendance ping to Go Backend and updates UI state with real-time calculations
   Future<bool> sendHeartbeat({
     required String triggerType,
     bool biometricVerified = false,
@@ -114,18 +132,24 @@ class AttendanceService extends ChangeNotifier {
     );
 
     try {
-      final response = await _apiClient.sendAttendancePing(request);
+      await _apiClient.sendAttendancePing(request);
 
-      final hour = now.hour > 12 ? now.hour - 12 : (now.hour == 0 ? 12 : now.hour);
-      final period = now.hour >= 12 ? 'PM' : 'AM';
-      final minStr = now.minute.toString().padLeft(2, '0');
-      final secStr = now.second.toString().padLeft(2, '0');
-      final shortEat = '${now.hour.toString().padLeft(2, '0')}:$minStr';
-      final formattedEat = '${hour.toString().padLeft(2, '0')}:$minStr:$secStr $period';
+      final formattedEat = _formatEatTime(now);
+      final shortEat = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+      if (!_isFirstSeenLocked) {
+        _firstSeenTime = now;
+        _firstSeenEat = formattedEat;
+        _isFirstSeenLocked = true;
+      }
 
       _lastSeenEat = formattedEat;
-      _activeDurationFormatted = response.activeDurationFormatted;
-      _isFirstSeenLocked = response.firstSeenLocked;
+      _firstSeenTime ??= now;
+
+      final diff = now.difference(_firstSeenTime!);
+      final hrs = diff.inHours;
+      final mins = diff.inMinutes % 60;
+      _activeDurationFormatted = '${hrs.toString().padLeft(2, '0')}h ${mins.toString().padLeft(2, '0')}m';
 
       _recentDetections.insert(
         0,
@@ -137,11 +161,12 @@ class AttendanceService extends ChangeNotifier {
               : triggerType == AttendanceTriggerType.manualBiometricSync
                   ? 'Biometric Attendance Sync'
                   : 'Wi-Fi Heartbeat (Auto)',
-          subtitle: 'Go Backend Heartbeat Synced',
+          subtitle: 'SSID: ${_wifiService.currentSsid} • BSSID: ${_wifiService.currentBssid}',
           triggerType: triggerType,
         ),
       );
 
+      _presenceState = PresenceState.checkedIn;
       _isSyncing = false;
       notifyListeners();
       return true;
@@ -152,7 +177,7 @@ class AttendanceService extends ChangeNotifier {
     }
   }
 
-  /// Perform Biometric Check-in or Manual Sync
+  /// Perform Biometric Check-in or Manual Sync with physical hardware authentication
   Future<bool> authenticateAndSync({required String triggerType}) async {
     final canAuth = await _biometricService.checkBiometricAvailability();
     if (!canAuth) return false;

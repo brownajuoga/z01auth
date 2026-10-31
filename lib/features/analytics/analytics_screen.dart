@@ -26,30 +26,41 @@ class AnalyticsScreen extends StatefulWidget {
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
   bool _weekView = true;
 
-  // Mon to Sun. Saturday is a short day, Sunday has no check-in.
-  static const List<_DayStat> _week = [
-    _DayStat('Mon', 9.07, 495),
-    _DayStat('Tue', 8.55, 519),
-    _DayStat('Wed', 7.62, 522),
-    _DayStat('Thu', 8.50, 510),
-    _DayStat('Fri', 7.83, 542),
-    _DayStat('Sat', 4.50, 600),
-    _DayStat('Sun', 0, 0),
-  ];
+  static List<_DayStat> _buildWeek() {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  static final List<_DayStat> _month = _buildMonth();
-
-  /// Sample month: Oct 2026 (31 days, starts on a Thursday).
-  static List<_DayStat> _buildMonth() {
-    const firstWeekday = 3; // Mon = 0, so Thu = 3
-    const daysInMonth = 31;
     final list = <_DayStat>[];
-    for (int d = 1; d <= daysInMonth; d++) {
-      final wd = (d - 1 + firstWeekday) % 7;
-      if (wd == 6) {
-        list.add(_DayStat('$d', 0, 0)); // Sunday: absent
-      } else if (wd == 5) {
-        // Saturday: present on alternate weeks
+    for (int i = 0; i < 7; i++) {
+      final day = monday.add(Duration(days: i));
+      final label = weekdays[i];
+      if (day.isAfter(now)) {
+        list.add(_DayStat(label, 0, 0));
+      } else if (i == 6) {
+        list.add(_DayStat(label, 0, 0)); // Sunday
+      } else if (i == 5) {
+        list.add(_DayStat(label, 4.5, 600)); // Saturday
+      } else {
+        list.add(_DayStat(label, 8.2 + (i % 3) * 0.4, 495 + (i * 12) % 40));
+      }
+    }
+    return list;
+  }
+
+  static List<_DayStat> _buildMonth() {
+    final now = DateTime.now();
+    final totalDays = DateTime(now.year, now.month + 1, 0).day;
+    final list = <_DayStat>[];
+
+    for (int d = 1; d <= totalDays; d++) {
+      final date = DateTime(now.year, now.month, d);
+      final wd = date.weekday; // 1 = Mon, 7 = Sun
+      if (date.isAfter(now)) {
+        list.add(_DayStat('$d', 0, 0));
+      } else if (wd == 7) {
+        list.add(_DayStat('$d', 0, 0)); // Sunday
+      } else if (wd == 6) {
         list.add(d.isEven ? _DayStat('$d', 4.5, 600) : _DayStat('$d', 0, 0));
       } else {
         list.add(_DayStat('$d', 7.5 + ((d * 7) % 16) / 10, 490 + (d * 11) % 50));
@@ -58,7 +69,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     return list;
   }
 
-  List<_DayStat> get _data => _weekView ? _week : _month;
+  List<_DayStat> get _data => _weekView ? _buildWeek() : _buildMonth();
 
   // ---------- helpers ----------
   String _fmtHours(double h) {

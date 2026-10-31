@@ -5,6 +5,7 @@ import '../../core/theme/theme_controller.dart';
 import '../../core/theme/z01_theme.dart';
 import '../../models/presence_state.dart';
 import '../../services/attendance_service.dart';
+import '../../services/user_service.dart';
 import '../auth/widgets/biometric_auth_modal.dart';
 import 'widgets/radar_ring.dart';
 
@@ -147,16 +148,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             onPressed: () => ThemeController.instance.toggleTheme(),
                           ),
                           const SizedBox(width: 4),
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: p.cardElevated,
-                            // Placeholder initials until Firebase user is wired in
-                            child: Text(
-                              'AB',
-                              style: TextStyle(
-                                color: p.text,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                          InkWell(
+                            borderRadius: BorderRadius.circular(99),
+                            onTap: () => Navigator.pushNamed(context, '/profile'),
+                            child: Tooltip(
+                              message: 'View Profile',
+                              child: CircleAvatar(
+                                radius: 18,
+                                backgroundColor: p.brand,
+                                child: Text(
+                                  UserService.instance.currentUser.initials,
+                                  style: TextStyle(
+                                    color: p.onBrand,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -349,72 +356,103 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: p.card,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: p.border),
-                    ),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: detections.length,
-                      separatorBuilder: (_, _) =>
-                          Divider(color: p.border, height: 1),
-                      itemBuilder: (context, index) {
-                        final log = detections[index];
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: index == 0 ? p.brand : p.muted,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      log.title,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13,
-                                        color: p.text,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      log.subtitle,
-                                      style: Z01Theme.monoStyle(
-                                        context: context,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                        color: p.muted,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                log.timeEat,
-                                style: Z01Theme.monoStyle(
-                                  context: context,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
+                  if (detections.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                      decoration: BoxDecoration(
+                        color: p.card,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: p.border),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(Icons.sensors_off_rounded, size: 28, color: p.muted),
+                          const SizedBox(height: 10),
+                          Text(
+                            'No check-ins recorded yet today',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: p.text,
+                            ),
                           ),
-                        );
-                      },
+                          const SizedBox(height: 4),
+                          Text(
+                            'Scan your fingerprint or verify presence to register your arrival.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 11, color: p.muted),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Container(
+                      decoration: BoxDecoration(
+                        color: p.card,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: p.border),
+                      ),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: detections.length,
+                        separatorBuilder: (_, _) =>
+                            Divider(color: p.border, height: 1),
+                        itemBuilder: (context, index) {
+                          final log = detections[index];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: index == 0 ? p.brand : p.muted,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        log.title,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                          color: p.text,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        log.subtitle,
+                                        style: Z01Theme.monoStyle(
+                                          context: context,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                          color: p.muted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  log.timeEat,
+                                  style: Z01Theme.monoStyle(
+                                    context: context,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

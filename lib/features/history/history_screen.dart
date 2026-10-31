@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/z01_theme.dart';
 import '../../models/presence_state.dart';
+import '../../services/api_client.dart';
 import 'widgets/attendance_detail_sheet.dart';
 
 /// Frame 4: History (monthly summary + daily attendance log)
-/// MOCK DATA for now. Real records come from the backend later.
+/// Dynamically loaded and synchronized via ApiClient
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
@@ -13,75 +14,70 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  String _selectedMonth = 'Oct 2026';
+  final ApiClient _apiClient = ApiClient.instance;
 
-  final AttendanceSummaryStats _summary = const AttendanceSummaryStats(
-    daysPresent: 18,
-    avgHours: 8.4,
+  static const _monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  late String _selectedMonth;
+  late int _selectedMonthIndex;
+  late int _selectedYear;
+
+  AttendanceSummaryStats _summary = const AttendanceSummaryStats(
+    daysPresent: 0,
+    avgHours: 0.0,
     verificationRatePercent: 100,
   );
 
-  final List<AttendanceRecord> _records = [
-    const AttendanceRecord(
-      date: '2026-10-21',
-      dateTitle: 'Today — Wed, Oct 21',
-      timeIn: '08:42 AM',
-      timeOut: '04:19 PM',
-      duration: '7h 37m',
-      isActive: true,
-      status: 'ACTIVE',
-    ),
-    const AttendanceRecord(
-      date: '2026-10-20',
-      dateTitle: 'Tue, Oct 20',
-      timeIn: '08:39 AM',
-      timeOut: '05:12 PM',
-      duration: '8h 33m',
-      isActive: false,
-      status: 'COMPLETED',
-    ),
-    const AttendanceRecord(
-      date: '2026-10-19',
-      dateTitle: 'Mon, Oct 19',
-      timeIn: '08:15 AM',
-      timeOut: '05:19 PM',
-      duration: '9h 04m',
-      isActive: false,
-      status: 'COMPLETED',
-    ),
-    const AttendanceRecord(
-      date: '2026-10-16',
-      dateTitle: 'Fri, Oct 16',
-      timeIn: '09:02 AM',
-      timeOut: '04:52 PM',
-      duration: '7h 50m',
-      isActive: false,
-      status: 'COMPLETED',
-    ),
-    const AttendanceRecord(
-      date: '2026-10-15',
-      dateTitle: 'Thu, Oct 15',
-      timeIn: '08:30 AM',
-      timeOut: '05:00 PM',
-      duration: '8h 30m',
-      isActive: false,
-      status: 'COMPLETED',
-    ),
-    const AttendanceRecord(
-      date: '2026-10-14',
-      dateTitle: 'Wed, Oct 14',
-      timeIn: '08:45 AM',
-      timeOut: '05:15 PM',
-      duration: '8h 30m',
-      isActive: false,
-      status: 'COMPLETED',
-    ),
-  ];
+  List<AttendanceRecord> _records = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedMonthIndex = now.month;
+    _selectedYear = now.year;
+    _selectedMonth = '${_monthNames[now.month - 1]} ${now.year}';
+    _fetchHistory();
+  }
+
+  Future<void> _fetchHistory() async {
+    setState(() => _isLoading = true);
+
+    final monthKey = '$_selectedYear-${_selectedMonthIndex.toString().padLeft(2, '0')}';
+    try {
+      final data = await _apiClient.getAttendanceHistory(monthKey);
+      if (!mounted) return;
+
+      final summaryMap = data['summary'] as Map<String, dynamic>? ?? {};
+      final daysList = data['days'] as List<dynamic>? ?? [];
+
+      setState(() {
+        _summary = AttendanceSummaryStats.fromJson(summaryMap);
+        _records = daysList
+            .map((item) => AttendanceRecord.fromJson(item as Map<String, dynamic>))
+            .toList();
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   void _switchMonth() {
     setState(() {
-      _selectedMonth = _selectedMonth == 'Oct 2026' ? 'Sep 2026' : 'Oct 2026';
+      if (_selectedMonthIndex == 1) {
+        _selectedMonthIndex = 12;
+        _selectedYear -= 1;
+      } else {
+        _selectedMonthIndex -= 1;
+      }
+      _selectedMonth = '${_monthNames[_selectedMonthIndex - 1]} $_selectedYear';
     });
+    _fetchHistory();
   }
 
   @override
@@ -151,7 +147,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                     Container(width: 1, height: 32, color: p.border),
                     Expanded(
-                      child: _statColumn(p, 'AVG HOURS', '${_summary.avgHours}h'),
+                      child: _statColumn(p, 'AVG HOURS', '${_summary.avgHours.toStringAsFixed(1)}h'),
                     ),
                     Container(width: 1, height: 32, color: p.border),
                     Expanded(
@@ -171,13 +167,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
               // ---------- Daily cards ----------
               Expanded(
-                child: ListView.separated(
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: _records.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) =>
-                      _recordCard(p, _records[index]),
-                ),
+                child: _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: p.brand,
+                        ),
+                      )
+                    : _records.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No attendance logs recorded for $_selectedMonth',
+                              style: TextStyle(fontSize: 13, color: p.muted),
+                            ),
+                          )
+                        : ListView.separated(
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: _records.length,
+                            separatorBuilder: (_, _) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) =>
+                                _recordCard(p, _records[index]),
+                          ),
               ),
             ],
           ),

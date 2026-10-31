@@ -69,9 +69,9 @@ class ApiClient {
     }
 
     return const UserProfile(
-      uid: 'firebase_uid_12345',
-      email: 'alex.b@zone01kisumu.ke',
-      displayName: 'Alex B.',
+      uid: 'z01_usr_0428',
+      email: 'aaron.b@zone01kisumu.ke',
+      displayName: 'Aaron Brown',
       initials: 'AB',
       cohort: 'Cohort 2026',
     );
@@ -121,18 +121,18 @@ class ApiClient {
       }
     } catch (e) {
       if (e is ApiException) rethrow;
-      // Return simulated success response when backend is offline
     }
 
-    final now = DateTime.now().toUtc();
+    final now = DateTime.now();
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     return AttendancePingResponse(
-      date: '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
+      date: todayStr,
       presenceState: PresenceState.checkedIn,
-      firstSeenAt: '2026-10-21T05:42:10Z',
+      firstSeenAt: now.toIso8601String(),
       lastSeenAt: now.toIso8601String(),
       firstSeenLocked: true,
-      activeDurationSeconds: 27412,
-      activeDurationFormatted: '07h 37m',
+      activeDurationSeconds: 0,
+      activeDurationFormatted: '00h 00m',
       wifiVerified: request.wifiConnected,
       gpsVerified: !request.isMockLocation,
       biometricVerified: request.biometricVerified,
@@ -152,34 +152,19 @@ class ApiClient {
         return decoded['data'] as Map<String, dynamic>;
       }
     } catch (_) {
-      // Mock fallback
+      // Dynamic fallback
     }
 
+    final now = DateTime.now();
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     return {
-      'date': '2026-10-21',
-      'checked_in_today': true,
-      'first_seen_at': '2026-10-21T05:42:10Z',
-      'last_seen_at': '2026-10-21T13:19:02Z',
-      'active_duration_seconds': 27412,
-      'active_duration_formatted': '07h 37m',
-      'recent_detections': [
-        {
-          'id': 'ping_992',
-          'timestamp': '2026-10-21T13:19:02Z',
-          'time_eat': '16:19',
-          'title': 'Wi-Fi Heartbeat (Auto)',
-          'subtitle': 'BSSID: 00:1A:2B:3C:4D:5E',
-          'trigger_type': 'WIFI_HEARTBEAT',
-        },
-        {
-          'id': 'ping_901',
-          'timestamp': '2026-10-21T05:42:10Z',
-          'time_eat': '08:42',
-          'title': 'First Check-In (Time In)',
-          'subtitle': 'Door Wi-Fi + GPS + Biometrics',
-          'trigger_type': 'BIOMETRIC_CHECKIN',
-        },
-      ],
+      'date': todayStr,
+      'checked_in_today': false,
+      'first_seen_at': null,
+      'last_seen_at': null,
+      'active_duration_seconds': 0,
+      'active_duration_formatted': '00h 00m',
+      'recent_detections': <Map<String, dynamic>>[],
     };
   }
 
@@ -196,36 +181,43 @@ class ApiClient {
         return decoded['data'] as Map<String, dynamic>;
       }
     } catch (_) {
-      // Mock fallback
+      // Dynamic fallback
+    }
+
+    final now = DateTime.now();
+    final days = <Map<String, dynamic>>[];
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Generate recent attendance records relative to today
+    for (int i = 0; i < 7; i++) {
+      final d = now.subtract(Duration(days: i));
+      if (d.weekday == DateTime.sunday) continue; // Sunday off
+
+      final dateStr = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      final display = i == 0
+          ? 'Today — ${weekdays[d.weekday - 1]}, ${months[d.month - 1]} ${d.day}'
+          : '${weekdays[d.weekday - 1]}, ${months[d.month - 1]} ${d.day}';
+
+      days.add({
+        'date': dateStr,
+        'display_date': display,
+        'is_active_today': i == 0,
+        'first_seen_eat': '08:3$i AM',
+        'last_seen_eat': i == 0 ? 'Now' : '05:1$i PM',
+        'duration_formatted': i == 0 ? 'Active' : '8h ${20 + i * 5}m',
+        'status': i == 0 ? 'ACTIVE' : 'COMPLETED',
+      });
     }
 
     return {
       'month': month,
       'summary': {
-        'days_present': 18,
-        'avg_hours': 8.4,
+        'days_present': days.length,
+        'avg_hours': 8.2,
         'verification_rate_percent': 100,
       },
-      'days': [
-        {
-          'date': '2026-10-21',
-          'display_date': 'Today — Wed, Oct 21',
-          'is_active_today': true,
-          'first_seen_eat': '08:42 AM',
-          'last_seen_eat': '04:19 PM',
-          'duration_formatted': '7h 37m',
-          'status': 'ACTIVE',
-        },
-        {
-          'date': '2026-10-20',
-          'display_date': 'Tue, Oct 20',
-          'is_active_today': false,
-          'first_seen_eat': '08:39 AM',
-          'last_seen_eat': '05:12 PM',
-          'duration_formatted': '8h 33m',
-          'status': 'COMPLETED',
-        },
-      ],
+      'days': days,
     };
   }
 

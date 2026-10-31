@@ -6,14 +6,30 @@ class ApiEndpoints {
 
   // 1. Auth & Session Binding
   static const String authSession = '$baseUrl/auth/session';
+  static const String authGoogle = '$baseUrl/auth/google';
+  static const String authBiometricChallenge = '$baseUrl/auth/biometric/challenge';
+  static const String authBiometricLogin = '$baseUrl/auth/biometric/login';
+  static const String authRefresh = '$baseUrl/auth/refresh';
+  static const String authLogout = '$baseUrl/auth/logout';
 
   // 2. Premises & Network Configuration
+  static const String config = '$baseUrl/config';
   static const String configPremises = '$baseUrl/config/premises';
+  static const String proximityCheck = '$baseUrl/proximity/check';
 
-  // 3. Attendance Heartbeats & Pings
+  // 3. User & Settings
+  static const String me = '$baseUrl/me';
+  static const String meSettings = '$baseUrl/me/settings';
+  static const String meBiometricKey = '$baseUrl/me/device/biometric-key';
+  static const String meDevices = '$baseUrl/me/devices';
+
+  // 4. Attendance Heartbeats & Pings
   static const String attendancePing = '$baseUrl/attendance/ping';
+  static const String attendanceHeartbeat = '$baseUrl/attendance/heartbeat';
+  static const String attendanceBiometricChallenge = '$baseUrl/attendance/biometric/challenge';
   static const String attendanceToday = '$baseUrl/attendance/today';
   static const String attendanceHistory = '$baseUrl/attendance/history';
+  static const String attendanceMonths = '$baseUrl/attendance/months';
 
   // Fallback defaults matching Backend Spec
   static const String defaultCampusName = 'Zone01 Campus';

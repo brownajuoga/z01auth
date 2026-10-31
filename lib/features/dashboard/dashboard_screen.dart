@@ -31,6 +31,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _attendanceService.initialize();
   }
 
+  @override
+  void dispose() {
+    _attendanceService.stop();
+    super.dispose();
+  }
+
   String get _todayLabel {
     final now = DateTime.now();
     return '${_days[now.weekday - 1]} · ${now.day} ${_months[now.month - 1]}';

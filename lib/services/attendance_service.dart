@@ -171,9 +171,14 @@ class AttendanceService extends ChangeNotifier {
     return false;
   }
 
+  void stop() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+  }
+
   @override
   void dispose() {
-    _heartbeatTimer?.cancel();
+    stop();
     super.dispose();
   }
 }

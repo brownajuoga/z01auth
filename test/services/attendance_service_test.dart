@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:z01auth/core/constants/api_endpoints.dart';
+import 'package:z01auth/models/presence_state.dart';
 import 'package:z01auth/services/api_client.dart';
 import 'package:z01auth/services/attendance_service.dart';
 import 'package:z01auth/services/location_service.dart';

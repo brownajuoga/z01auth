@@ -15,6 +15,8 @@ class ApiException implements Exception {
     required this.statusCode,
   });
 
+  bool get isNetworkError => statusCode == 0;
+
   @override
   String toString() => 'ApiException [$code] ($statusCode): $message';
 }
@@ -121,22 +123,12 @@ class ApiClient {
       }
     } catch (e) {
       if (e is ApiException) rethrow;
+      throw ApiException(
+        code: 'ERR_NETWORK',
+        message: e.toString(),
+        statusCode: 0,
+      );
     }
-
-    final now = DateTime.now();
-    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    return AttendancePingResponse(
-      date: todayStr,
-      presenceState: PresenceState.checkedIn,
-      firstSeenAt: now.toIso8601String(),
-      lastSeenAt: now.toIso8601String(),
-      firstSeenLocked: true,
-      activeDurationSeconds: 0,
-      activeDurationFormatted: '00h 00m',
-      wifiVerified: request.wifiConnected,
-      gpsVerified: !request.isMockLocation,
-      biometricVerified: request.biometricVerified,
-    );
   }
 
   /// GET /api/v1/attendance/today - Populates Frame 3 Dashboard
@@ -221,7 +213,7 @@ class ApiClient {
     };
   }
 
-  void _handleErrorResponse(http.Response response) {
+  Never _handleErrorResponse(http.Response response) {
     try {
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final error = decoded['error'] as Map<String, dynamic>? ?? {};

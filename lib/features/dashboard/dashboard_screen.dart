@@ -63,7 +63,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final success = await _attendanceService.authenticateAndSync(
           triggerType: AttendanceTriggerType.manualBiometricSync,
         );
-        if (mounted && success) {
+        if (!mounted) return;
+        if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               duration: Duration(seconds: 2),
@@ -71,6 +72,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               content: Text(
                 'Attendance synced',
                 style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              content: Text(
+                _attendanceService.lastErrorMessage ??
+                    'Could not sync attendance.',
               ),
             ),
           );

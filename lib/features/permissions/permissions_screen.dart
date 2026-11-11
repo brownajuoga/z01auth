@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/z01_theme.dart';
 import '../../services/permissions_service.dart';
 
@@ -41,14 +42,14 @@ class _PermissionsScreenState extends State<PermissionsScreen>
     ),
     PermissionItem(
       title: 'Background location',
-      description:
-          'Choose "Allow all the time" so attendance can update while the app is closed.',
+      description: 'Choose "Allow all the time" so attendance can update while the app is closed.',
       icon: Icons.location_searching_rounded,
       isGranted: false,
     ),
     PermissionItem(
       title: 'Wi-Fi access',
-      description: 'Reads the campus router address to confirm you are on site.',
+      description:
+          'Reads the campus router address to confirm you are on site.',
       icon: Icons.wifi_rounded,
       isGranted: false,
     ),
@@ -63,8 +64,78 @@ class _PermissionsScreenState extends State<PermissionsScreen>
   int get _grantedCount => _items.where((i) => i.isGranted).length;
   bool get _allGranted => _grantedCount == _items.length;
 
-  void _togglePermission(int index) {
-    setState(() => _items[index].isGranted = !_items[index].isGranted);
+  late final PermissionsService _service =
+      widget.permissionsService ?? PermissionsService.instance;
+  PermissionSnapshot _snapshot = const PermissionSnapshot();
+  bool _checking = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Back from system Settings: read the real state again.
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  void _apply(PermissionSnapshot s) {
+    if (!mounted) return;
+    setState(() {
+      _snapshot = s;
+      _checking = false;
+      _items[0].isGranted = s.preciseLocation;
+      _items[1].isGranted = s.backgroundLocation;
+      _items[2].isGranted = s.wifiAccess;
+      _items[3].isGranted = s.biometrics;
+    });
+  }
+
+  Future<void> _refresh() async => _apply(await _service.check());
+
+  void _tell(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _onCardTap(int index) async {
+    if (_items[index].isGranted) return;
+    switch (index) {
+      case 0:
+      case 2:
+        if (index == 2 && _snapshot.preciseLocation) {
+          _tell(
+            "Turn on your phone's Location switch so the Wi-Fi "
+            'address can be read.',
+          );
+        } else if (_snapshot.locationPermanentlyDenied) {
+          _tell('Turn on Location for this app in Settings.');
+          await _service.openSettings();
+        } else {
+          _apply(await _service.requestLocation());
+        }
+      case 1:
+        if (!_snapshot.preciseLocation) {
+          _tell('Allow precise location first.');
+        } else {
+          _tell('Choose "Allow all the time" in Settings.');
+          await _service.openSettings();
+        }
+      case 3:
+        _tell(
+          'Set up a fingerprint or face unlock in your phone Settings, '
+          'then come back.',
+        );
+    }
   }
 
   void _handleContinue() {
@@ -90,7 +161,10 @@ class _PermissionsScreenState extends State<PermissionsScreen>
             children: [
               // Progress pill
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: p.cardElevated,
                   borderRadius: BorderRadius.circular(99),
@@ -117,10 +191,8 @@ class _PermissionsScreenState extends State<PermissionsScreen>
               const SizedBox(height: 16),
               Text(
                 'Set up automatic check-in',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontSize: 26,
-                      height: 1.25,
-                    ),
+                style: Theme.of(context).textTheme.headlineMedium
+                    ?.copyWith(fontSize: 26, height: 1.25),
               ),
               const SizedBox(height: 8),
               Text(
@@ -142,19 +214,27 @@ class _PermissionsScreenState extends State<PermissionsScreen>
               ),
 
               // Hint if background location is off
-              if (!_items[1].isGranted)
+              if (!_checking && !_items[1].isGranted)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.info_outline_rounded, size: 16, color: p.muted),
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 16,
+                        color: p.muted,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Without background location, attendance only updates '
                           'while the app is open.',
-                          style: TextStyle(color: p.muted, fontSize: 12, height: 1.4),
+                          style: TextStyle(
+                            color: p.muted,
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
                         ),
                       ),
                     ],
@@ -182,7 +262,7 @@ class _PermissionsScreenState extends State<PermissionsScreen>
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => _togglePermission(index),
+        onTap: () => _onCardTap(index),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -242,7 +322,11 @@ class _PermissionsScreenState extends State<PermissionsScreen>
                     const SizedBox(height: 4),
                     Text(
                       item.description,
-                      style: TextStyle(color: p.muted, fontSize: 12, height: 1.4),
+                      style: TextStyle(
+                        color: p.muted,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
                     ),
                   ],
                 ),

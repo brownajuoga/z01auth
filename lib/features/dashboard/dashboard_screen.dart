@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+
 import '../../core/constants/api_endpoints.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/theme/z01_theme.dart';
@@ -22,8 +23,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   static const _days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
   static const _months = [
-    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DEC',
   ];
 
   @override
@@ -47,7 +58,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_attendanceService.presenceState == PresenceState.offPremises) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Biometrics are locked. Move near the campus to unlock.'),
+          content: Text(
+            'Biometrics are locked. Move near the campus to unlock.',
+          ),
           duration: Duration(seconds: 2),
         ),
       );
@@ -145,7 +158,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           if (kDebugMode)
                             IconButton(
                               tooltip: 'Cycle state (debug)',
-                              icon: Icon(Icons.tune_rounded, size: 20, color: p.muted),
+                              icon: Icon(
+                                Icons.tune_rounded,
+                                size: 20,
+                                color: p.muted,
+                              ),
                               onPressed: _attendanceService.cycleStateForDemo,
                             ),
                           IconButton(
@@ -157,12 +174,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               size: 20,
                               color: p.text,
                             ),
-                            onPressed: () => ThemeController.instance.toggleTheme(),
+                            onPressed: () =>
+                                ThemeController.instance.toggleTheme(),
                           ),
                           const SizedBox(width: 4),
                           InkWell(
                             borderRadius: BorderRadius.circular(99),
-                            onTap: () => Navigator.pushNamed(context, '/profile'),
+                            onTap: () =>
+                                Navigator.pushNamed(context, '/profile'),
                             child: Tooltip(
                               message: 'View Profile',
                               child: CircleAvatar(
@@ -206,8 +225,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         isIn
                             ? 'Wi-Fi verified'
                             : state == PresenceState.approaching
-                                ? 'Wi-Fi scanning'
-                                : 'Wi-Fi not detected',
+                            ? 'Wi-Fi scanning'
+                            : 'Wi-Fi not detected',
                         verified: isIn,
                       ),
                       _statusPill(
@@ -218,17 +237,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       _statusPill(
                         p,
-                        isOff ? Icons.lock_outline_rounded : Icons.fingerprint_rounded,
+                        isOff
+                            ? Icons.lock_outline_rounded
+                            : Icons.fingerprint_rounded,
                         isIn
                             ? 'Biometric verified'
                             : state == PresenceState.approaching
-                                ? 'Biometric ready'
-                                : 'Biometric locked',
+                            ? 'Biometric ready'
+                            : 'Biometric locked',
                         verified: isIn,
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
+
+                  // ---------- Load-failure notice ----------
+                  if (_attendanceService.todayLoadFailed) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: p.card,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: p.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.cloud_off_rounded,
+                            size: 18,
+                            color: p.muted,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              "Couldn't load today's attendance. "
+                              'Showing the last known values.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.4,
+                                color: p.text,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
 
                   // ---------- Time In / Time Out ----------
                   Row(
@@ -244,7 +300,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'FIRST SEEN · IN',
@@ -254,8 +311,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       color: p.onBrand,
                                     ),
                                   ),
-                                  Icon(Icons.lock_outline_rounded,
-                                      size: 14, color: p.onBrand),
+                                  Icon(
+                                    Icons.lock_outline_rounded,
+                                    size: 14,
+                                    color: p.onBrand,
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 10),
@@ -270,7 +330,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 'Locked for today',
-                                style: TextStyle(fontSize: 11, color: p.onBrand),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: p.onBrand,
+                                ),
                               ),
                             ],
                           ),
@@ -289,7 +352,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'LAST SEEN · OUT',
@@ -299,7 +363,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       color: p.muted,
                                     ),
                                   ),
-                                  Icon(Icons.sync_rounded, size: 14, color: p.muted),
+                                  Icon(
+                                    Icons.sync_rounded,
+                                    size: 14,
+                                    color: p.muted,
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 10),
@@ -349,8 +417,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       isIn
                           ? 'Verify & sync attendance'
                           : state == PresenceState.approaching
-                              ? 'Scan fingerprint to check in'
-                              : 'Move near campus to unlock',
+                          ? 'Scan fingerprint to check in'
+                          : 'Move near campus to unlock',
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -371,7 +439,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   if (detections.isEmpty)
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 24,
+                      ),
                       decoration: BoxDecoration(
                         color: p.card,
                         borderRadius: BorderRadius.circular(20),
@@ -379,10 +450,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       child: Column(
                         children: [
-                          Icon(Icons.sensors_off_rounded, size: 28, color: p.muted),
+                          Icon(
+                            Icons.sensors_off_rounded,
+                            size: 28,
+                            color: p.muted,
+                          ),
                           const SizedBox(height: 10),
                           Text(
-                            'No check-ins recorded yet today',
+                            _attendanceService.todayLoadFailed
+                                ? "Couldn't load today's check-ins"
+                                : 'No check-ins recorded yet today',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
@@ -415,7 +492,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           final log = detections[index];
                           return Padding(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                             child: Row(
                               children: [
                                 Container(
@@ -429,7 +508,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         log.title,
@@ -493,10 +573,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(width: 6),
           Text(
             text,
-            style: TextStyle(
-              fontSize: 12,
-              color: verified ? p.text : p.muted,
-            ),
+            style: TextStyle(fontSize: 12, color: verified ? p.text : p.muted),
           ),
         ],
       ),

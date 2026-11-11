@@ -4,18 +4,46 @@ import 'package:z01auth/features/auth/widgets/proximity_shield_hero.dart';
 import 'package:z01auth/features/dashboard/dashboard_shell.dart';
 import 'package:z01auth/features/permissions/permissions_screen.dart';
 import 'package:z01auth/features/profile/profile_screen.dart';
-import 'package:z01auth/main.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:z01auth/features/auth/auth_screen.dart';
+import 'package:z01auth/services/location_service.dart';
+import 'package:z01auth/services/wifi_service.dart';
+
+/// Answers instantly with "no Wi-Fi", so the login screen can finish its check.
+class FakeWifiService extends WifiService {
+  @override
+  Future<void> refreshWifiInfo() async {}
+}
+
+/// Answers instantly with "no permission, no fix".
+class FakeLocationService extends LocationService {
+  @override
+  Future<bool> hasGrantedPermission() async => false;
+
+  @override
+  Future<Position?> refreshLocation() async => null;
+}
 
 void main() {
-    testWidgets('Login screen starts fail-closed and the debug toggle works',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(const Z01AuthApp());
-        
+  testWidgets('Login screen starts fail-closed and the debug toggle works', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthScreen(
+          wifiService: FakeWifiService(),
+          locationService: FakeLocationService(),
+        ),
+      ),
+    );
+
     // The screen first shows "Checking your location...". Keep pumping until
     // that finishes (or give up after about 5 seconds of fake time).
-    for (var i = 0;
-        i < 50 && find.text('Checking your location...').evaluate().isNotEmpty;
-        i++) {
+    for (
+      var i = 0;
+      i < 50 && find.text('Checking your location...').evaluate().isNotEmpty;
+      i++
+    ) {
       await tester.pump(const Duration(milliseconds: 100));
     }
 
@@ -53,7 +81,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   });
 
-  testWidgets('PermissionsScreen renders checklist items', (WidgetTester tester) async {
+  testWidgets('PermissionsScreen renders checklist items', (
+    WidgetTester tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
@@ -61,11 +91,7 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: PermissionsScreen(),
-      ),
-    );
+    await tester.pumpWidget(const MaterialApp(home: PermissionsScreen()));
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Set up automatic check-in'), findsOneWidget);
@@ -75,12 +101,10 @@ void main() {
     expect(find.text('Biometrics'), findsOneWidget);
   });
 
-  testWidgets('DashboardShell renders tabs and bottom navigation', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: DashboardShell(),
-      ),
-    );
+  testWidgets('DashboardShell renders tabs and bottom navigation', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: DashboardShell()));
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Live'), findsOneWidget);
@@ -93,7 +117,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
   });
 
-  testWidgets('DashboardScreen profile avatar navigates to ProfileScreen', (WidgetTester tester) async {
+  testWidgets('DashboardScreen profile avatar navigates to ProfileScreen', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         initialRoute: '/dashboard',

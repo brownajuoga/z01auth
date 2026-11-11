@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+
 import '../../core/theme/theme_controller.dart';
 import '../../core/theme/z01_theme.dart';
 import '../../services/location_service.dart';
@@ -9,15 +10,20 @@ import 'widgets/proximity_shield_hero.dart';
 
 /// Frame 1: Auth (Google sign-in + proximity-gated biometrics)
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.wifiService, this.locationService});
+
+  /// Optional overrides, used by tests. The app uses the real services.
+  final WifiService? wifiService;
+  final LocationService? locationService;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  final WifiService _wifi = WifiService.instance;
-  final LocationService _location = LocationService.instance;
+  late final WifiService _wifi = widget.wifiService ?? WifiService.instance;
+  late final LocationService _location =
+      widget.locationService ?? LocationService.instance;
 
   // Fail closed: not near campus until the sensors say so.
   bool _isNearPremises = false;
@@ -42,17 +48,15 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _refreshProximity() async {
     final granted = await _location.hasGrantedPermission();
     if (granted) {
-      await Future.wait([
-        _wifi.refreshWifiInfo(),
-        _location.refreshLocation(),
-      ]);
+      await Future.wait([_wifi.refreshWifiInfo(), _location.refreshLocation()]);
     }
     if (!mounted || _debugForced) return;
 
     setState(() {
       _permissionNeeded = !granted;
       _isNearPremises =
-          granted && (_wifi.isCampusWifiMatched() || _location.isWithinGeofence());
+          granted &&
+          (_wifi.isCampusWifiMatched() || _location.isWithinGeofence());
       _distanceMeters = (granted && _location.hasFix)
           ? _location.calculateDistanceToCampus().round()
           : null;
@@ -60,9 +64,8 @@ class _AuthScreenState extends State<AuthScreen> {
     });
   }
 
-  String _formatDistance(int meters) => meters >= 1000
-      ? '${(meters / 1000).toStringAsFixed(1)} km'
-      : '$meters m';
+  String _formatDistance(int meters) =>
+      meters >= 1000 ? '${(meters / 1000).toStringAsFixed(1)} km' : '$meters m';
 
   String get _statusText {
     if (_debugForced) {
@@ -72,7 +75,9 @@ class _AuthScreenState extends State<AuthScreen> {
     if (_permissionNeeded) return 'Location access needed';
     final d = _distanceMeters;
     if (_isNearPremises) {
-      return d != null ? 'On premises · ${_formatDistance(d)}' : 'On campus Wi-Fi';
+      return d != null
+          ? 'On premises · ${_formatDistance(d)}'
+          : 'On campus Wi-Fi';
     }
     return d != null
         ? 'Off premises · ${_formatDistance(d)}'
@@ -97,7 +102,9 @@ class _AuthScreenState extends State<AuthScreen> {
         content: Row(
           children: [
             Icon(
-              _isNearPremises ? Icons.shield_rounded : Icons.lock_outline_rounded,
+              _isNearPremises
+                  ? Icons.shield_rounded
+                  : Icons.lock_outline_rounded,
               color: p.brand,
               size: 16,
             ),
@@ -125,7 +132,7 @@ class _AuthScreenState extends State<AuthScreen> {
       setState(() {
         _warningMessage = _permissionNeeded
             ? 'Location access is needed to unlock biometrics. '
-                'You will be asked for it after you sign in with Google.'
+                  'You will be asked for it after you sign in with Google.'
             : 'Biometrics are locked. Connect to campus Wi-Fi or enter the 50 m perimeter.';
       });
       return;
@@ -134,7 +141,8 @@ class _AuthScreenState extends State<AuthScreen> {
     BiometricAuthModal.show(
       context: context,
       title: 'Biometric Sign-In',
-      subtitle: 'Touch the fingerprint sensor to verify your identity at Zone01.',
+      subtitle:
+          'Touch the fingerprint sensor to verify your identity at Zone01.',
       proximityTag: 'ON PREMISES',
       onSuccess: () {
         Navigator.pushReplacementNamed(context, '/permissions');
@@ -162,7 +170,10 @@ class _AuthScreenState extends State<AuthScreen> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -215,8 +226,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           // The test toggle only works in debug builds.
                           ProximityShieldHero(
                             isNearPremises: _isNearPremises,
-                            onToggleProximity:
-                                kDebugMode ? _toggleProximityGate : () {},
+                            onToggleProximity: kDebugMode
+                                ? _toggleProximityGate
+                                : () {},
                           ),
                         ],
                       ),
@@ -229,9 +241,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             Text(
                               'Log in to mark attendance',
                               textAlign: TextAlign.center,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
+                              style: Theme.of(context).textTheme.headlineMedium
                                   ?.copyWith(fontSize: 26, height: 1.25),
                             ),
                             const SizedBox(height: 8),
@@ -259,17 +269,24 @@ class _AuthScreenState extends State<AuthScreen> {
                               width: double.infinity,
                               margin: const EdgeInsets.only(bottom: 12),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 10),
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
                               decoration: BoxDecoration(
                                 color: p.card,
                                 borderRadius: BorderRadius.circular(14),
-                                border:
-                                    Border.all(color: p.borderStrong, width: 1),
+                                border: Border.all(
+                                  color: p.borderStrong,
+                                  width: 1,
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.info_outline_rounded,
-                                      size: 16, color: p.text),
+                                  Icon(
+                                    Icons.info_outline_rounded,
+                                    size: 16,
+                                    color: p.text,
+                                  ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
@@ -304,8 +321,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           // Secondary: Biometrics (locked look when off premises)
                           OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
-                              foregroundColor:
-                                  _isNearPremises ? p.text : p.muted,
+                              foregroundColor: _isNearPremises
+                                  ? p.text
+                                  : p.muted,
                             ),
                             onPressed: _handleBiometricAuth,
                             icon: Icon(

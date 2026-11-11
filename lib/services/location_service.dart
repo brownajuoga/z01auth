@@ -48,6 +48,19 @@ class LocationService {
     }
   }
 
+  /// True if location permission is already granted. Never shows a prompt.
+  Future<bool> hasGrantedPermission() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      _hasPermission = permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse;
+      return _hasPermission;
+    } catch (_) {
+      _hasPermission = false;
+      return false;
+    }
+  }
+
   /// Reads the current GPS position. Any failure clears the previous fix,
   /// so old coordinates can never keep the device "on campus".
   Future<Position?> refreshLocation() async {
@@ -137,7 +150,7 @@ class LocationService {
     _currentLongitude = longitude;
     _accuracyMeters = accuracy;
     _isMockLocation = isMock;
-    _hasFix = true;
+    _hasFix = true;  /// True if location permission is already granted. Never shows a prompt.
   }
 
   void _clearFix(String reason) {

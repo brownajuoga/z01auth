@@ -2,10 +2,12 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../core/theme/z01_theme.dart';
+import '../../services/location_service.dart';
+import '../../services/wifi_service.dart';
 import 'widgets/biometric_auth_modal.dart';
 import 'widgets/proximity_shield_hero.dart';
 
-/// Frame 1: 01_Auth (Google sign-in + proximity-gated biometrics)
+/// Frame 1: Auth (Google sign-in + proximity-gated biometrics)
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -14,12 +16,73 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  // Simulated proximity state (mock until real sensors are wired in)
-  bool _isNearPremises = true;
+  final WifiService _wifi = WifiService.instance;
+  final LocationService _location = LocationService.instance;
+
+  // Fail closed: not near campus until the sensors say so.
+  bool _isNearPremises = false;
+  bool _checking = true;
+  bool _permissionNeeded = false;
+  int? _distanceMeters;
+
+  // Debug builds only: set once the test toggle has been used, so the real
+  // sensor result no longer overrides it.
+  bool _debugForced = false;
+
   String? _warningMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshProximity();
+  }
+
+  /// Reads the real Wi-Fi and GPS. Never triggers a permission prompt: the
+  /// permissions screen does that after sign-in.
+  Future<void> _refreshProximity() async {
+    final granted = await _location.hasGrantedPermission();
+    if (granted) {
+      await Future.wait([
+        _wifi.refreshWifiInfo(),
+        _location.refreshLocation(),
+      ]);
+    }
+    if (!mounted || _debugForced) return;
+
+    setState(() {
+      _permissionNeeded = !granted;
+      _isNearPremises =
+          granted && (_wifi.isCampusWifiMatched() || _location.isWithinGeofence());
+      _distanceMeters = (granted && _location.hasFix)
+          ? _location.calculateDistanceToCampus().round()
+          : null;
+      _checking = false;
+    });
+  }
+
+  String _formatDistance(int meters) => meters >= 1000
+      ? '${(meters / 1000).toStringAsFixed(1)} km'
+      : '$meters m';
+
+  String get _statusText {
+    if (_debugForced) {
+      return _isNearPremises ? 'On premises (test)' : 'Off premises (test)';
+    }
+    if (_checking) return 'Checking your location...';
+    if (_permissionNeeded) return 'Location access needed';
+    final d = _distanceMeters;
+    if (_isNearPremises) {
+      return d != null ? 'On premises · ${_formatDistance(d)}' : 'On campus Wi-Fi';
+    }
+    return d != null
+        ? 'Off premises · ${_formatDistance(d)}'
+        : 'Location unavailable';
+  }
 
   void _toggleProximityGate() {
     setState(() {
+      _debugForced = true;
+      _checking = false;
       _isNearPremises = !_isNearPremises;
       _warningMessage = null;
     });
@@ -42,9 +105,13 @@ class _AuthScreenState extends State<AuthScreen> {
             Expanded(
               child: Text(
                 _isNearPremises
-                    ? 'Test mode: on premises (18 m)'
-                    : 'Test mode: off premises (>150 m)',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: p.text),
+                    ? 'Test mode: on premises'
+                    : 'Test mode: off premises',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: p.text,
+                ),
               ),
             ),
           ],
@@ -56,8 +123,10 @@ class _AuthScreenState extends State<AuthScreen> {
   void _handleBiometricAuth() {
     if (!_isNearPremises) {
       setState(() {
-        _warningMessage =
-            'Biometrics are locked. Connect to campus Wi-Fi or enter the 50 m perimeter.';
+        _warningMessage = _permissionNeeded
+            ? 'Location access is needed to unlock biometrics. '
+                'You will be asked for it after you sign in with Google.'
+            : 'Biometrics are locked. Connect to campus Wi-Fi or enter the 50 m perimeter.';
       });
       return;
     }
@@ -66,14 +135,14 @@ class _AuthScreenState extends State<AuthScreen> {
       context: context,
       title: 'Biometric Sign-In',
       subtitle: 'Touch the fingerprint sensor to verify your identity at Zone01.',
-      proximityTag: 'PROXIMITY VERIFIED • 18m',
+      proximityTag: 'ON PREMISES',
       onSuccess: () {
         Navigator.pushReplacementNamed(context, '/permissions');
       },
     );
   }
 
-    void _handleGoogleSignIn() {
+  void _handleGoogleSignIn() {
     // Signing in only proves who you are. Attendance is recorded separately
     // and only counts when you are on premises.
     Navigator.pushNamed(context, '/permissions');
@@ -103,7 +172,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                                                            Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -137,12 +206,13 @@ class _AuthScreenState extends State<AuthScreen> {
                                       : Icons.dark_mode_outlined,
                                   color: p.text,
                                 ),
-                                onPressed: () => ThemeController.instance.toggleTheme(),
+                                onPressed: () =>
+                                    ThemeController.instance.toggleTheme(),
                               ),
                             ],
                           ),
                           const SizedBox(height: 16),
-                          // Test toggle only works in debug builds.
+                          // The test toggle only works in debug builds.
                           ProximityShieldHero(
                             isNearPremises: _isNearPremises,
                             onToggleProximity:
@@ -159,17 +229,21 @@ class _AuthScreenState extends State<AuthScreen> {
                             Text(
                               'Log in to mark attendance',
                               textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                    fontSize: 26,
-                                    height: 1.25,
-                                  ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(fontSize: 26, height: 1.25),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Campus Wi-Fi and location confirm where you are. '
                               'Your fingerprint confirms it\'s you.',
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: p.muted, fontSize: 14, height: 1.5),
+                              style: TextStyle(
+                                color: p.muted,
+                                fontSize: 14,
+                                height: 1.5,
+                              ),
                             ),
                             const SizedBox(height: 16),
                             _statusPill(p),
@@ -184,15 +258,18 @@ class _AuthScreenState extends State<AuthScreen> {
                             Container(
                               width: double.infinity,
                               margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
                               decoration: BoxDecoration(
                                 color: p.card,
                                 borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: p.borderStrong, width: 1),
+                                border:
+                                    Border.all(color: p.borderStrong, width: 1),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.info_outline_rounded, size: 16, color: p.text),
+                                  Icon(Icons.info_outline_rounded,
+                                      size: 16, color: p.text),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
@@ -227,7 +304,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           // Secondary: Biometrics (locked look when off premises)
                           OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: _isNearPremises ? p.text : p.muted,
+                              foregroundColor:
+                                  _isNearPremises ? p.text : p.muted,
                             ),
                             onPressed: _handleBiometricAuth,
                             icon: Icon(
@@ -264,7 +342,7 @@ class _AuthScreenState extends State<AuthScreen> {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
       child: Container(
-        key: ValueKey(_isNearPremises),
+        key: ValueKey(_statusText),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           color: p.cardElevated,
@@ -282,10 +360,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
             const SizedBox(width: 6),
-            Text(
-              _isNearPremises ? 'On premises · 18 m' : 'Off premises · >150 m',
-              style: TextStyle(fontSize: 12, color: p.text),
-            ),
+            Text(_statusText, style: TextStyle(fontSize: 12, color: p.text)),
           ],
         ),
       ),

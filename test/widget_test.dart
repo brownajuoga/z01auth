@@ -7,43 +7,46 @@ import 'package:z01auth/features/profile/profile_screen.dart';
 import 'package:z01auth/main.dart';
 
 void main() {
-  testWidgets('Z01AuthApp loads and displays auth screen with Lock & Shield centerpiece', (WidgetTester tester) async {
+    testWidgets('Login screen starts fail-closed and the debug toggle works',
+      (WidgetTester tester) async {
     await tester.pumpWidget(const Z01AuthApp());
-    await tester.pump(const Duration(milliseconds: 300));
+        
+    // The screen first shows "Checking your location...". Keep pumping until
+    // that finishes (or give up after about 5 seconds of fake time).
+    for (var i = 0;
+        i < 50 && find.text('Checking your location...').evaluate().isNotEmpty;
+        i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
-    // Verify Brand Title
+    // Brand and shield
     expect(find.text('Z01 Authentication App'), findsOneWidget);
-
-    // Verify Proximity Shield Hero is present
     expect(find.byType(ProximityShieldHero), findsOneWidget);
-
-    // Verify Initial In-Range State
-    expect(find.text('On premises · 18 m'), findsOneWidget);
-    expect(find.text('Wi-Fi verified'), findsOneWidget);
-    expect(find.text('Biometrics ready'), findsOneWidget);
     expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.text('Sign in with biometrics'), findsOneWidget);
 
-    // Tap the Proximity Shield Hero to toggle proximity gate simulation
-    await tester.tap(find.byType(ProximityShieldHero));
-    await tester.pump(const Duration(milliseconds: 400));
-
-    // Verify Gated / Locked State
-    expect(find.text('Off premises · >150 m'), findsOneWidget);
+    // In a test there are no real sensors, so the screen must fail closed.
+    expect(find.text('Location access needed'), findsOneWidget);
     expect(find.text('Wi-Fi not detected'), findsOneWidget);
     expect(find.text('Biometrics locked'), findsOneWidget);
     expect(find.text('Biometrics unlock on campus'), findsOneWidget);
 
-    // Tap again to toggle back
+    // Debug toggle: tap the shield to simulate being on campus.
     await tester.tap(find.byType(ProximityShieldHero));
     await tester.pump(const Duration(milliseconds: 400));
 
-    // Verify restored In-Range State
-    expect(find.text('On premises · 18 m'), findsOneWidget);
+    expect(find.text('On premises (test)'), findsOneWidget);
     expect(find.text('Wi-Fi verified'), findsOneWidget);
     expect(find.text('Biometrics ready'), findsOneWidget);
+    expect(find.text('Sign in with biometrics'), findsOneWidget);
 
-    // Test Theme toggle button
+    // Tap again: back to off premises.
+    await tester.tap(find.byType(ProximityShieldHero));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Off premises (test)'), findsOneWidget);
+    expect(find.text('Wi-Fi not detected'), findsOneWidget);
+
+    // Theme toggle
     final themeToggleFinder = find.byTooltip('Toggle theme');
     expect(themeToggleFinder, findsOneWidget);
     await tester.tap(themeToggleFinder);

@@ -43,6 +43,22 @@ class BiometricService {
     }
   }
 
+  /// Strict check for the permissions screen: true only when the device
+  /// reports real, enrolled biometrics. Web, errors and unknowns give false.
+  /// Does not change any stored state.
+  Future<bool> hasEnrolledBiometrics() async {
+    if (kIsWeb) return false;
+    try {
+      final supported = await _auth.isDeviceSupported();
+      final canCheck = await _auth.canCheckBiometrics;
+      if (!supported || !canCheck) return false;
+      final enrolled = await _auth.getAvailableBiometrics();
+      return enrolled.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Authenticate user via physical biometric sensor prompt
   Future<bool> authenticate({
     required String reason,

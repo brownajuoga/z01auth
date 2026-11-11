@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/z01_theme.dart';
+import '../../services/permissions_service.dart';
 
 /// One row in the permissions checklist.
 class PermissionItem {
@@ -17,22 +18,26 @@ class PermissionItem {
 }
 
 /// Frame 2: Permissions onboarding (Android 6.0+).
-/// MOCK for now: tapping a card flips it between granted and required.
-/// Real Android permission prompts get wired in during the hardware phase.
+/// Every row starts OFF and shows what the OS really allows. Tapping an OFF
+/// row asks for it, or sends the user to Settings when the OS requires that.
 class PermissionsScreen extends StatefulWidget {
-  const PermissionsScreen({super.key});
+  const PermissionsScreen({super.key, this.permissionsService});
+
+  /// Optional override, used by tests. The app uses the real service.
+  final PermissionsService? permissionsService;
 
   @override
   State<PermissionsScreen> createState() => _PermissionsScreenState();
 }
 
-class _PermissionsScreenState extends State<PermissionsScreen> {
+class _PermissionsScreenState extends State<PermissionsScreen>
+    with WidgetsBindingObserver {
   final List<PermissionItem> _items = [
     PermissionItem(
       title: 'Precise location',
       description: 'Detects when you are inside the 50 m campus perimeter.',
       icon: Icons.my_location_rounded,
-      isGranted: true,
+      isGranted: false,
     ),
     PermissionItem(
       title: 'Background location',
@@ -45,13 +50,13 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
       title: 'Wi-Fi access',
       description: 'Reads the campus router address to confirm you are on site.',
       icon: Icons.wifi_rounded,
-      isGranted: true,
+      isGranted: false,
     ),
     PermissionItem(
       title: 'Biometrics',
       description: 'Fingerprint or face unlock, available only on campus.',
       icon: Icons.fingerprint_rounded,
-      isGranted: true,
+      isGranted: false,
     ),
   ];
 

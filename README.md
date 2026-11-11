@@ -98,7 +98,8 @@ lib/
 │   ├── auth/                          # Frame 1: Auth screen & biometric scanner modal
 │   │   ├── auth_screen.dart
 │   │   └── widgets/
-│   │       └── biometric_auth_modal.dart
+│   │       ├── biometric_auth_modal.dart
+│   │       └── proximity_shield_hero.dart  # Shield graphic showing proximity state
 │   ├── permissions/                   # Frame 2: Android 6.0+ permission onboarding checklist
 │   │   └── permissions_screen.dart
 │   ├── dashboard/                     # Frame 3: Live Radar, PresenceRing, and Settings Drawer
@@ -107,15 +108,22 @@ lib/
 │   │   └── widgets/
 │   │       ├── radar_ring.dart        # CustomPainter for solid, dashed, & dotted rings
 │   │       └── settings_drawer.dart   # In-app settings and theme mode switcher
-│   └── history/                       # Frame 4: Monthly attendance log & summary
-│       ├── history_screen.dart
-│       └── widgets/
-│           └── attendance_detail_sheet.dart
+│   ├── history/                       # Frame 4: Monthly attendance log & summary
+│   │   ├── history_screen.dart
+│   │   └── widgets/
+│   │       └── attendance_detail_sheet.dart
+│   ├── analytics/                     # Insights tab (last 7 days)
+│   │   └── analytics_screen.dart
+│   └── profile/                       # Student profile
+│       └── profile_screen.dart
 ├── services/                          # Integrated service layer for hardware & Go backend API
 │   ├── api_client.dart                # REST client implementing Go backend contracts
 │   ├── attendance_service.dart        # Central attendance & heartbeat orchestrator
+│   ├── background_service.dart        # Background heartbeat (WorkManager)
 │   ├── biometric_service.dart         # Local biometric authentication wrapper
 │   ├── location_service.dart          # Haversine distance & geofence perimeter calculations
+│   ├── permissions_service.dart       # Real permission state and requests; fails closed
+│   ├── user_service.dart              # Current user profile (hardcoded placeholder until Firebase)
 │   └── wifi_service.dart              # Wi-Fi SSID reading & BSSID whitelist matching
 └── main.dart                          # App entry point & root route configuration
 ```

@@ -6,7 +6,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.47.5-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.13.4-0175C2?logo=dart)](https://dart.dev)
 [![Android](https://img.shields.io/badge/Android-6.0%2B%20(API%2023%2B)-3DDC84?logo=android)](https://developer.android.com)
-[![Design](https://img.shields.io/badge/Theme-Monochrome%20B%26W-000000)](#design-system--aesthetics)
+[![Design](https://img.shields.io/badge/Theme-Light%20%26%20Dark-4A6FC4)](#3-design-system--aesthetics)
 [![Backend](https://img.shields.io/badge/Backend-Go%20%2B%20Firebase-00ADD8?logo=go)](https://go.dev)
 
 ---
@@ -19,8 +19,8 @@ $$\text{1st Valid Detection of the Day} = \textbf{Time In} \quad (\text{locked f
 $$\text{Last Valid Detection of the Day} = \textbf{Time Out} \quad (\text{continuously updated})$$
 
 Instead of queueing at a wall-mounted sensor, the mobile app leverages three distinct verification signals:
-1. **Google Auth (Firebase Auth):** Authenticates the student/staff member and binds their physical Android device.
-2. **Campus Proximity (Wi-Fi BSSID + GPS Geofence):** Verifies the phone is inside the $50\text{ m}$ campus perimeter or connected to a whitelisted campus Wi-Fi access point (`00:1a:2b:3c:4d:5e`, `00:1a:2b:3c:4d:5f`).
+1. **Google Auth (Firebase Auth):** Authenticates the student/staff member and binds their physical Android device. Not yet implemented; it needs Firebase access.
+2. **Campus Proximity (Wi-Fi BSSID + GPS Geofence):** Verifies the phone is inside the $50\text{ m}$ campus perimeter or connected to a whitelisted campus Wi-Fi access point `00:1a:2b:3c:4d:5e` `00:1a:2b:3c:4d:5f`(the addresses in the code are placeholders until the real ones are confirmed)
 3. **Proximity-Gated Biometrics (`local_auth`):** Unlocks on-device fingerprint/face authentication **only** when the phone detects campus Wi-Fi or GPS proximity.
 
 ---
@@ -28,14 +28,14 @@ Instead of queueing at a wall-mounted sensor, the mobile app leverages three dis
 ## 2. Core Screens & User Workflow (4 Frames)
 
 ### Frame 1: Authentication (`01_Auth`)
-- **Proximity Gate Banner:** Displays live proximity status (`NEAR PREMISES • 18m` vs `OFF PREMISES • >150m`). Includes an interactive test toggle for instant simulation.
+- **Proximity Gate Banner:** Displays live proximity status (`NEAR PREMISES • 18m` vs `OFF PREMISES • >150m`). Reads the real Wi-Fi and GPS state and starts off premises (fail-closed). Debug builds also have a test toggle for simulating proximity.
 - **Biometric Sign-In:** Gated by proximity. When near campus, clicking opens the native-style biometric bottom sheet. When off-premises, the button displays a locked state (`🔒 Biometrics Locked`).
-- **Google Sign-In:** Initiates OAuth sign-in and device binding handshake (`POST /api/v1/auth/session`).
+- **Google Sign-In:** Initiates OAuth sign-in and device binding handshake (`POST /api/v1/auth/session`).  Real Firebase sign-in is still pending.
 - **Biometric Scanner Modal:** Animated radar-pulse fingerprint target with haptic feedback simulation.
 
 ### Frame 2: Permission Onboarding (`02_Permissions`)
 - Tailored for **Android 6.0+ (API 23+)** runtime permissions and Android 10+ background location.
-- **Interactive Checklist Cards:**
+- **Checklist cards (real permission state):** every row starts off and shows what the OS allows. Tapping an off row requests it or opens Settings, and the state refreshes when you come back.
   1. *Precise Location (GPS):* Detects entry into the 50m campus perimeter.
   2. *Background Location:* Enables hands-free check-ins without keeping the app open.
   3. *Wi-Fi State & BSSID:* Reads router MAC address to authenticate campus access points.
@@ -52,7 +52,8 @@ Instead of queueing at a wall-mounted sensor, the mobile app leverages three dis
   - *LAST SEEN (OUT):* Dynamically rolls forward on every valid Wi-Fi heartbeat ping ↻.
 - **Action CTA:** *Biometric Verify & Sync Attendance* (triggers on-demand ping to Go backend).
 - **Recent Detections List:** Audit log showing exact timestamps and trigger types.
-- **In-App Settings Drawer:** Hamburger menu offering instant Black/White theme switching, background polling toggle, and sign-out.
+- **Load-failure notice:** if today's attendance can't be loaded, a notice appears and the last known values stay on screen.
+- **In-App Settings Drawer:** Hamburger menu offering instant light/dark theme switching, background polling toggle, and sign-out.
 
 ### Frame 4: Monthly Attendance Log (`04_History`)
 - **Monthly Summary Strip:** 3-column overview displaying `DAYS PRESENT` (e.g., 18d), `AVG HOURS` (e.g., 8.4h), and `VERIFIED` (100%).
@@ -63,18 +64,19 @@ Instead of queueing at a wall-mounted sensor, the mobile app leverages three dis
 
 ## 3. Design System & Aesthetics
 
-Z01auth implements a high-contrast **Pure Monochrome Black (#000000) & White (#FFFFFF)** aesthetic managed by a reactive `ThemeController`:
+Z01auth uses a high-contrast black and white palette with neutral grays and a single blue brand accent, managed by a reactive `ThemeController` (light and dark modes). The token names below mirror the constants in `lib/core/theme/z01_theme.dart`.
 
-| Token Name | Dark Theme (Pure Black) | Light Theme (Pure White) | Usage |
+| Token | Dark | Light | Usage |
 | :--- | :--- | :--- | :--- |
-| **`appBg`** | `#000000` | `#FFFFFF` | Scaffold backgrounds |
-| **`appCard`** | `#0C0C0C` | `#F7F7F7` | Standard cards & containers |
-| **`appCardElevated`** | `#161616` | `#EDEDED` | Active states & pill containers |
-| **`appBorder`** | `#262626` | `#E2E2E2` | Hairline dividers & borders |
-| **`appBorderStrong`** | `#FFFFFF` | `#000000` | High-contrast component borders |
-| **`appText`** | `#FFFFFF` | `#000000` | Primary headings & emphasis text |
-| **`appMuted`** | `#888888` | `#666666` | Secondary labels & helper captions |
-| **`appAccent`** | `#FFFFFF` | `#000000` | Primary action buttons |
+| **`bg`** | `#000000` | `#FFFFFF` | Scaffold backgrounds |
+| **`card`** | `#0E0E0E` | `#F5F5F5` | Standard cards & containers |
+| **`cardElevated`** | `#1A1A1A` | `#EBEBEB` | Active states & pill containers |
+| **`border`** | `#262626` | `#E0E0E0` | Hairline dividers & borders |
+| **`borderStrong`** | `#FFFFFF` | `#000000` | High-contrast component borders |
+| **`text`** | `#FFFFFF` | `#000000` | Primary headings & emphasis text |
+| **`muted`** | `#9A9A9A` | `#5E5E5E` | Secondary labels & helper captions |
+| **`accent`** | `#FFFFFF` | `#000000` | Primary action buttons (text on it: `accentFg`) |
+| **`brand`** | `#4A6FC4` | `#4A6FC4` | Brand highlights, e.g. the Time In card (text on it: `onBrand`, `#FFFFFF`) |
 
 ### Typography
 - **Primary UI:** `Inter` (clean, modern sans-serif).
@@ -90,8 +92,8 @@ lib/
 │   ├── constants/
 │   │   └── api_endpoints.dart         # Go backend routes, campus coordinates & BSSID whitelists
 │   └── theme/
-│       ├── theme_controller.dart      # Reactive ValueNotifier for instant B&W theme switching
-│       └── z01_theme.dart             # Pure Black & White ThemeData, tokens, and mono helpers
+│       ├── theme_controller.dart      # Reactive ValueNotifier for instant light/dark switching
+│       └── z01_theme.dart             # Light and dark ThemeData, color tokens, and mono helpers
 ├── models/
 │   └── presence_state.dart            # DTOs & models matching Go Backend JSON contracts
 ├── features/
@@ -140,7 +142,9 @@ Content-Type: application/json
 X-Device-ID: <ANDROID_HARDWARE_ID>
 ```
 
-### Endpoints Implemented
+### Endpoints Implemented (client side)
+
+The client code exists and is tested against fakes. It has not been verified against a live server, and the Firebase token and device ID are still placeholders.
 
 | Endpoint | Method | Purpose |
 | :--- | :--- | :--- |

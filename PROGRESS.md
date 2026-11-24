@@ -1,91 +1,117 @@
 # Z01auth — Development Progress & Roadmap
 
-**Current Status:** Step 1–6 Core Frontend & Integration Architecture Complete  
-**Date:** October 21, 2026  
-**Target Platform:** Flutter (Android 6.0+ / API 23+, Chrome Web)  
-**Backend Architecture:** Go REST API + Firebase Auth & Firestore  
+**Current Status:** Frontend complete apart from items that need the backend team or Firebase. Lead-review fixes are in progress.
+**Last updated:** November 11, 2026
+**Target Platform:** Flutter (Android 6.0+ / API 23+, Chrome Web)
+**Backend Architecture:** Go REST API + Firebase Auth & Firestore
+**Tests:** `flutter analyze` clean, 31 tests passing
 
 ---
 
 ## 1. Executive Summary
 
-Z01auth replaces the legacy physical door fingerprint scanner with zero-touch proximity-gated mobile attendance. Attendance accounting strictly preserves the door scanner rule:
+Z01auth replaces the legacy physical door fingerprint scanner with zero-touch proximity-gated mobile attendance. Attendance accounting preserves the door scanner rule:
 - **1st Valid Detection of the Day:** Locks `Time In` (`first_seen_at`) for the day.
 - **Subsequent Valid Detections (Heartbeats):** Continuously rolls forward `Time Out` (`last_seen_at`).
 
+The app is **fail-closed**: until a real reading says otherwise, the device is treated as not on campus, biometrics are locked, and nothing is recorded unless the server accepted it.
+
 ---
 
-## 2. Completed Milestones (Steps 1 – 6)
+## 2. Completed Milestones
 
 | Step | Date | Commit | Status | Summary of Deliverables |
 | :--- | :--- | :--- | :--- | :--- |
-| **Step 1** | Oct 17, 2026 | `ea2992d` | Completed | Initialized monochrome B&W theme engine, `ThemeController`, data models, and 4-frame navigation shell. |
-| **Step 2** | Oct 17, 2026 | `42f13ff` | Completed | Built Frame 1 (`01_Auth`) with proximity-gating banner, interactive biometric bottom sheet modal, and Google sign-in. |
-| **Step 3** | Oct 18, 2026 | `af5323e` | Completed | Built Frame 2 (`02_Permissions`) with interactive checklist cards for fine location, background location, Wi-Fi BSSID, and biometrics. Configured for Android 6.0+ (API 23+). |
-| **Step 4** | Oct 19, 2026 | `fcdc008` | Completed | Built Frame 3 (`03_Dashboard`) featuring the custom animated `PresenceRadarRing`, verification pills, 2-column Time In / Time Out cards, sync button, and recent detections list. |
-| **Step 5** | Oct 20, 2026 | `2e58771` | Completed | Built Frame 4 (`04_History`) with 3-column monthly summary strip (`DAYS PRESENT`, `AVG HOURS`, `VERIFIED`), daily attendance log cards, and `AttendanceDetailSheet`. |
-| **Step 6** | Oct 21, 2026 | `9afe7a2` | Completed | Built full service layer (`ApiClient`, `AttendanceService`, `BiometricService`, `LocationService`, `WifiService`) matching the Go Backend API specification. |
-| **Step 7** | Oct 27, 2026 | `4bd152d` | Completed | Implemented Analytics View (`AnalyticsScreen`), refined proximity shield hero, updated launcher icons, and finalized brand identity. |
-| **Step 8** | Oct 30, 2026 | `677123e` | Completed | Finalized frontend integration: synchronized Go backend API routes, resolved test suite lifecycle, and validated 0 analyzer issues. |
-| **Step 9** | Oct 31, 2026 | `HEAD` | Completed | Implemented real hardware `local_auth` biometric sensing, migrated MainActivity to `FlutterFragmentActivity`, built dedicated `ProfileScreen`, wired header avatar navigation, and purged mock/fake data across all screens. |
+| **Step 1** | Oct 17, 2026 | `ea2992d` | Completed | Monochrome theme engine, `ThemeController`, data models, and 4-frame navigation shell. |
+| **Step 2** | Oct 17, 2026 | `42f13ff` | Completed | Frame 1 (`01_Auth`) with proximity-gating banner, biometric bottom sheet, and Google sign-in. |
+| **Step 3** | Oct 18, 2026 | `af5323e` | Completed | Frame 2 (`02_Permissions`) checklist for fine location, background location, Wi-Fi and biometrics. Android 6.0+ (API 23+). |
+| **Step 4** | Oct 19, 2026 | `fcdc008` | Completed | Frame 3 (`03_Dashboard`) with the animated radar ring, verification pills, Time In / Time Out cards, sync button and recent detections. |
+| **Step 5** | Oct 20, 2026 | `2e58771` | Completed | Frame 4 (`04_History`) with monthly summary strip, daily log cards and `AttendanceDetailSheet`. |
+| **Step 6** | Oct 21, 2026 | `9afe7a2` | Completed | Service layer (`ApiClient`, `AttendanceService`, `BiometricService`, `LocationService`, `WifiService`) matching the Go backend specification. |
+| **Step 7** | Oct 27, 2026 | `4bd152d` | Completed | Analytics view (`AnalyticsScreen`), proximity shield hero, launcher icons and brand identity. |
+| **Step 8** | Oct 30, 2026 | `677123e` | Completed | Synchronized Go backend API routes, resolved test suite lifecycle, 0 analyzer issues. |
+| **Step 9** | Oct 31, 2026 | n/a | Completed | Real `local_auth` biometric sensing, `FlutterFragmentActivity` migration, `ProfileScreen`, header avatar navigation. |
+| **Step 10** | Nov 2026 | on `ogero` | In progress | Fixes for the lead's review (section 3). Not yet merged to `main`. |
+
+Design and build work (new theme, restyled screens, Insights tab covering 7 days, app icon and the "Z01 Authentication App" name) is merged to `main`.
 
 ---
 
-## 3. Detailed Feature Progress Checklist
+## 3. Lead Review Findings (F1 to F17)
 
-### Frontend UI & Aesthetics
-- [x] Strict high-contrast Monochrome theme: Pure Black (`#000000`) and Pure White (`#FFFFFF`).
-- [x] Dynamic runtime theme switching via `ThemeController` (reactive `ValueNotifier`).
-- [x] In-app `SettingsDrawer` with Black/White appearance toggles, background polling toggle, student profile shortcut, and Google sign-out.
-- [x] Custom `RadarRingPainter` supporting 3 visual geometry states:
-  - Solid outer ring with animated pulse glow (**Checked In**)
-  - Dashed arc ring (**Near Premises / Approaching**)
-  - Dotted circle ring (**Off Premises / Locked**)
-- [x] Proximity gate banner with interactive test toggle (simulates Near Premises `<50m` vs Off Premises `>150m`).
-- [x] Biometric authentication bottom-sheet scanner wired directly to physical sensor hardware via `local_auth`.
-- [x] Dedicated `ProfileScreen` with student identity, device binding details, and interactive biometric diagnostics.
-- [x] 2-Column summary cards with immutable Time In (lock icon) and rolling Time Out (sync icon).
-- [x] Frame 4 History scrollable list with dynamic API data fetching and interactive audit trail modal sheet.
+| # | Finding | Status |
+| :--- | :--- | :--- |
+| F1 | Dependencies fail on the wrong Flutter version | **Open.** `pubspec.yaml` now requires Flutter `>=3.47.7`. A single pinned version for the team still has to be agreed with the lead (FVM was suggested). |
+| F2 | No real authentication | **Open.** Needs Firebase console access. |
+| F3 | Made-up data and fake success | **Done.** `api_client.dart` throws typed `ApiException` errors; `attendance_service.dart` records only what the server accepted. Covered by tests. |
+| F4 | Wi-Fi and location fail open | **Done.** Both services start "not on campus" and clear on any failure. Placeholder BSSIDs and mock locations are never treated as on campus. |
+| F5 | Server trusts client claims | **Open.** Needs a design session with the backend team. |
+| F6 | Hardcoded device ID and user | **Open.** Marked TODO; comes with Firebase. `UserService` still holds a placeholder profile. |
+| F7 | Permissions screen is cosmetic | **Code complete.** Rows start off and reflect the real OS state; tapping an off row requests it or opens Settings; state is re-read on return from Settings. **Still to verify on a device** (background location "Allow all the time", Wi-Fi row on Android 11+). |
+| F8 | Background heartbeat has no token | **Open.** Comes after F2. |
+| F9 | Simulated proximity and demo controls | **Done.** The login screen reads real sensors; demo controls are debug-only; the login widget test injects fake services. |
+| F10 | Insights shows generated data | **Open.** Needs the real history endpoint. |
+| F11 | Heartbeat timing | **Partly done.** Sensors refresh before each heartbeat and overlapping pings are blocked. The 15-minute WorkManager side is untouched. |
+| F12 | Times labelled EAT but in device time | **Done.** Server times are shown in Nairobi time. |
+| F13 | Starts as "checked in" | **Done.** Starts off premises. |
+| F14 | No service tests | **Done for now.** Tests cover Wi-Fi, location, attendance and the API client. |
+| F15 | Release config | **Partly done.** Base URL can be set with `--dart-define`; the pubspec description and Flutter constraint are set. Still open: the `com.example.z01auth` app ID, signing with the debug key, and HTTPS. |
+| F16 | Documentation drift | **Done** with this update: `progress.readme` duplicate removed, README source tree corrected. |
+| F17 | Unused endpoints | **Open.** Ask the backend team which are in scope. |
 
-### Platform & Android Configuration
-- [x] Target platform configured for **Android 6.0+ (API 23+)** via `minSdk = 23` in `android/app/build.gradle.kts`.
-- [x] Migrated `MainActivity.kt` to `FlutterFragmentActivity` for native `BiometricPrompt` support.
-- [x] Declared runtime & hardware permissions in `AndroidManifest.xml`:
-  - `android.permission.INTERNET`
-  - `android.permission.ACCESS_FINE_LOCATION`
-  - `android.permission.ACCESS_COARSE_LOCATION`
-  - `android.permission.ACCESS_WIFI_STATE`
-  - `android.permission.CHANGE_WIFI_STATE`
-  - `android.permission.ACCESS_NETWORK_STATE`
-  - `android.permission.USE_FINGERPRINT` (Android 6.0 – 8.1 / API 23+)
-  - `android.permission.USE_BIOMETRIC` (Android 9.0+ / API 28+)
-  - `android.permission.ACCESS_BACKGROUND_LOCATION`
+Other fixes on `ogero`: the dashboard now shows a notice when today's attendance cannot be loaded (`todayLoadFailed`), and biometric availability starts false and stays false after an error or on web.
 
-### Backend API Integration Layer (Go + Firebase)
-- [x] `POST /api/v1/auth/session`: User validation & hardware device ID binding.
-- [x] `GET /api/v1/config/premises`: Fetches campus geofence ($r = 50\text{ m}$) and allowed BSSID whitelist (`00:1a:2b:3c:4d:5e`, `00:1a:2b:3c:4d:5f`).
-- [x] `POST /api/v1/attendance/ping`: Dispatches biometric check-in, Wi-Fi heartbeats, manual sync, and geofence exit events.
-- [x] `GET /api/v1/attendance/today`: Real-time dashboard sync.
-- [x] `GET /api/v1/attendance/history`: Monthly attendance statistics and daily records.
-- [x] Structured error code parsing (`ERR_UNAUTHORIZED`, `ERR_DEVICE_MISMATCH`, `ERR_BIOMETRIC_REQUIRED`, `ERR_MOCK_LOCATION_DETECTED`, `ERR_OUTSIDE_PREMISES`).
+**Known gap:** `BiometricService.authenticate()` still returns success on web after a short delay. The attendance flow no longer reaches it, but the biometric modal calls it directly.
 
 ---
 
-## 4. Remaining Tasks & Roadmap
+## 4. Feature Checklist
 
+### Frontend UI
+- [x] Theme switching via `ThemeController` (reactive `ValueNotifier`).
+- [x] In-app `SettingsDrawer` with appearance toggles, background polling toggle, profile shortcut and sign-out.
+- [x] `RadarRingPainter` with three states: solid (checked in), dashed (near premises), dotted (off premises).
+- [x] Login screen reads real Wi-Fi and GPS state; the proximity toggle is a debug-only control.
+- [x] Biometric bottom sheet wired to the physical sensor through `local_auth`.
+- [x] `ProfileScreen` with identity, device binding details and biometric diagnostics (placeholder identity until Firebase).
+- [x] Time In (locked) and Time Out (rolling) cards, with Nairobi-time display.
+- [x] Dashboard notice when today's attendance cannot be loaded, and an empty state for no check-ins.
+- [x] History list with API fetching and audit trail sheet.
+- [x] Permissions checklist backed by real checks (`PermissionsService`).
+
+### Platform and Android Configuration
+- [x] `minSdk = 23` in `android/app/build.gradle.kts`.
+- [x] `MainActivity.kt` uses `FlutterFragmentActivity` for `BiometricPrompt`.
+- [x] Permissions declared in `AndroidManifest.xml`: `INTERNET`, `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `ACCESS_WIFI_STATE`, `CHANGE_WIFI_STATE`, `ACCESS_NETWORK_STATE`, `USE_FINGERPRINT`, `USE_BIOMETRIC`, `ACCESS_BACKGROUND_LOCATION`.
+- [ ] Final application ID (currently `com.example.z01auth`), release signing, HTTPS.
+
+### Backend Integration Layer (client side)
+The client code for these endpoints exists and is tested against fakes. It has **not** been verified against a live server.
+- [x] `POST /api/v1/auth/session`
+- [x] `GET /api/v1/config/premises`
+- [x] `POST /api/v1/attendance/ping`
+- [x] `GET /api/v1/attendance/today`
+- [x] `GET /api/v1/attendance/history`
+- [x] Structured error parsing (`ERR_UNAUTHORIZED`, `ERR_DEVICE_MISMATCH`, `ERR_BIOMETRIC_REQUIRED`, `ERR_MOCK_LOCATION_DETECTED`, `ERR_OUTSIDE_PREMISES`).
+
+---
+
+## 5. Remaining Work
+
+### Final stage
 ```
 Remaining Tasks
-├── 1. Physical Device Hardware Wiring
-│   ├── [x] local_auth plugin integration (real biometric hardware prompt & diagnostics)
-│   ├── geolocator plugin integration (live GPS fix + isMockLocation check)
-│   └── network_info_plus plugin integration (live BSSID/SSID reading)
-├── 2. Firebase & Google Auth Production Setup
+├── 1. Hardware verification on a physical device
+│   ├── Permissions flow (including "Allow all the time")
+│   ├── Live GPS fix and mock-location rejection
+│   └── Live BSSID reading on campus Wi-Fi
+├── 2. Firebase and Google Auth setup
 │   ├── Add google-services.json to android/app/
-│   └── Attach real Firebase ID Token to ApiClient headers
-├── 3. Background Polling Service
-│   └── Configure workmanager for 5-minute background Wi-Fi heartbeats
-├── 4. Live Go Backend Server Handshake
-│   └── Update ApiEndpoints.baseUrl to live backend IP / staging server
-└── 5. Campus Deployment & Router Calibration
-    └── Verify BSSIDs against physical access points at Zone01 Kisumu
+│   └── Attach the real Firebase ID token to ApiClient headers
+├── 3. Background polling
+│   └── WorkManager heartbeat (15-minute minimum interval) with token
+├── 4. Live backend handshake
+│   └── Point the base URL (--dart-define) at the staging server
+└── 5. Campus deployment and router calibration
+    └── Verify BSSIDs against the physical access points at Zone01 Kisumu
 ```

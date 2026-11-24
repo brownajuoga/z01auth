@@ -8,8 +8,8 @@ class BiometricService {
 
   final LocalAuthentication _auth = LocalAuthentication();
 
-  bool _isHardwareSupported = true;
-  bool _canCheckBiometrics = true;
+  bool _isHardwareSupported = false;
+  bool _canCheckBiometrics = false;
   String _lastErrorMessage = '';
 
   String get lastErrorMessage => _lastErrorMessage;
@@ -29,7 +29,9 @@ class BiometricService {
       return isSupported && canCheck;
     } catch (e) {
       _lastErrorMessage = e.toString();
-      return _isHardwareSupported && _canCheckBiometrics;
+      _isHardwareSupported = false;
+      _canCheckBiometrics = false;
+      return false;
     }
   }
 
@@ -40,6 +42,22 @@ class BiometricService {
       return await _auth.getAvailableBiometrics();
     } catch (_) {
       return const [];
+    }
+  }
+
+  /// Strict check for the permissions screen: true only when the device
+  /// reports real, enrolled biometrics. Web, errors and unknowns give false.
+  /// Does not change any stored state.
+  Future<bool> hasEnrolledBiometrics() async {
+    if (kIsWeb) return false;
+    try {
+      final supported = await _auth.isDeviceSupported();
+      final canCheck = await _auth.canCheckBiometrics;
+      if (!supported || !canCheck) return false;
+      final enrolled = await _auth.getAvailableBiometrics();
+      return enrolled.isNotEmpty;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -78,7 +96,8 @@ class BiometricService {
           break;
         case LocalAuthExceptionCode.temporaryLockout:
         case LocalAuthExceptionCode.biometricLockout:
-          _lastErrorMessage = 'Too many attempts. Biometrics temporarily locked.';
+          _lastErrorMessage =
+              'Too many attempts. Biometrics temporarily locked.';
           break;
         case LocalAuthExceptionCode.noCredentialsSet:
           _lastErrorMessage = 'No screen lock or passcode set on this device.';
@@ -87,7 +106,8 @@ class BiometricService {
           _lastErrorMessage = 'Authentication canceled.';
           break;
         default:
-          _lastErrorMessage = e.description ?? 'Biometric authentication failed.';
+          _lastErrorMessage =
+              e.description ?? 'Biometric authentication failed.';
       }
       return false;
     } catch (e) {
